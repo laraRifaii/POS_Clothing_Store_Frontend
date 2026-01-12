@@ -1,0 +1,22 @@
+{
+  "name": "electronapp",
+  "version": "0.0.1",
+  "description": "This is a dummy app",
+  "keywords": [
+    "electron",
+    "reactjs",
+    "typescript"
+  ],
+  "license": "ISC",
+  "author": "Lara Rifaii",
+  "type": "commonjs",
+  "main": "main.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "start": "electron .",
+    "dev:watch": "npx electronmon --trace-warnings ."
+  },
+  "devDependencies": {
+    "electron": "^39.2.7"
+  }
+}
