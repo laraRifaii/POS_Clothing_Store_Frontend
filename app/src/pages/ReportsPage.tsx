@@ -2,7 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { saleApi, Sale, SalesReport } from '../services/api/sale.api';
 import BackButton from '../components/backButton';
-import { DollarSign, ShoppingBag, TrendingUp } from 'lucide-react';
+import { DollarSign, ShoppingBag, TrendingUp, PiggyBank } from 'lucide-react';
 import { toast } from 'react-toastify';
 
 export const ReportsPage: React.FC = () => {
@@ -12,21 +12,28 @@ export const ReportsPage: React.FC = () => {
   const [startDate, setStartDate] = useState(
     new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
   );
-  const [endDate, setEndDate] = useState(
-    new Date().toISOString().split('T')[0],
-  );
+  const [endDate, setEndDate] = useState(() => {
+    const tomorrow = new Date();
+    tomorrow.setDate(tomorrow.getDate() + 1); // add 1 day
+    return tomorrow.toISOString().split('T')[0];
+  });
+
   const [activeTab, setActiveTab] = useState<'overview' | 'sales'>('overview');
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 10;
+  const [totalSales, setTotalSales] = useState(0);
 
   useEffect(() => {
     fetchReport();
     fetchRecentSales();
-  }, [startDate, endDate]);
+  }, [startDate, endDate, currentPage]);
 
   const fetchReport = async () => {
     setLoading(true);
     try {
       const response = await saleApi.getReport(startDate, endDate);
       setReport(response);
+      console.log('Report data:', response);
     } catch (error: any) {
       console.error('Error fetching report:', error);
       toast.error(error.message || 'Failed to fetch report');
@@ -40,9 +47,14 @@ export const ReportsPage: React.FC = () => {
       const response = await saleApi.getAll({
         startDate,
         endDate,
-        limit: 50,
+        page: currentPage,
+        limit: itemsPerPage,
       });
+      if (response.total === 0) {
+        toast.info(response.message);
+      }
       setRecentSales(response.sales);
+      setTotalSales(response.total);
     } catch (error) {
       console.error('Error fetching sales:', error);
     }
@@ -58,24 +70,20 @@ export const ReportsPage: React.FC = () => {
   return (
     <div className="p-8 bg-gray-50 min-h-screen">
       <div className="max-w-7xl mx-auto">
-        {/* Header */}
         <div className="flex justify-between items-center mb-8">
-          <div className="flex  items-center ">
+          <div className="flex items-center">
             <BackButton className="mr-4" />
-
             <div>
               <h1 className="text-3xl font-bold text-gray-900">
-                {' '}
                 Sales Reports
               </h1>
               <p className="text-gray-600 mt-1">
-                View sales analytics and insights
+                View sales analytics and profit insights
               </p>
             </div>
           </div>
         </div>
 
-        {/* Date Range Selector */}
         <div className="bg-white p-6 rounded-lg shadow-sm mb-6">
           <div className="flex flex-wrap items-end gap-4">
             <div className="flex-1 min-w-50">
@@ -125,7 +133,6 @@ export const ReportsPage: React.FC = () => {
           </div>
         </div>
 
-        {/* Tabs */}
         <div className="mb-6 border-b">
           <div className="flex gap-4">
             <button
@@ -157,17 +164,15 @@ export const ReportsPage: React.FC = () => {
           <>
             {activeTab === 'overview' && report && (
               <div className="space-y-6">
-                {/* Stats Cards */}
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                {/* Stats Cards - Now with Profit */}
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
                   <div className="bg-white p-6 rounded-lg shadow-sm">
                     <div className="flex items-center gap-4">
                       <div className="p-3 bg-blue-100 rounded-lg">
                         <DollarSign className="text-blue-600" size={24} />
                       </div>
                       <div>
-                        <div className="text-sm text-gray-600">
-                          Total Revenue
-                        </div>
+                        <div className="text-sm text-gray-600">Revenue</div>
                         <div className="text-2xl font-bold text-gray-900">
                           ${report.totalRevenue.toFixed(2)}
                         </div>
@@ -178,7 +183,26 @@ export const ReportsPage: React.FC = () => {
                   <div className="bg-white p-6 rounded-lg shadow-sm">
                     <div className="flex items-center gap-4">
                       <div className="p-3 bg-green-100 rounded-lg">
-                        <ShoppingBag className="text-green-600" size={24} />
+                        <PiggyBank className="text-green-600" size={24} />
+                      </div>
+                      <div>
+                        <div className="text-sm text-gray-600">
+                          Gross Profit
+                        </div>
+                        <div className="text-2xl font-bold text-green-600">
+                          ${report.grossProfit?.toFixed(2) || '0.00'}
+                        </div>
+                        <div className="text-xs text-gray-500 mt-1">
+                          Margin: {report.profitMargin?.toFixed(1) || '0'}%
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="bg-white p-6 rounded-lg shadow-sm">
+                    <div className="flex items-center gap-4">
+                      <div className="p-3 bg-purple-100 rounded-lg">
+                        <ShoppingBag className="text-purple-600" size={24} />
                       </div>
                       <div>
                         <div className="text-sm text-gray-600">Total Sales</div>
@@ -191,13 +215,11 @@ export const ReportsPage: React.FC = () => {
 
                   <div className="bg-white p-6 rounded-lg shadow-sm">
                     <div className="flex items-center gap-4">
-                      <div className="p-3 bg-purple-100 rounded-lg">
-                        <TrendingUp className="text-purple-600" size={24} />
+                      <div className="p-3 bg-orange-100 rounded-lg">
+                        <TrendingUp className="text-orange-600" size={24} />
                       </div>
                       <div>
-                        <div className="text-sm text-gray-600">
-                          Avg Sale Value
-                        </div>
+                        <div className="text-sm text-gray-600">Avg Sale</div>
                         <div className="text-2xl font-bold text-gray-900">
                           $
                           {report.totalSales > 0
@@ -210,6 +232,44 @@ export const ReportsPage: React.FC = () => {
                     </div>
                   </div>
                 </div>
+
+                {/* Cost & Profit Breakdown */}
+                {report.totalCost !== undefined && (
+                  <div className="bg-white p-6 rounded-lg shadow-sm">
+                    <h2 className="text-xl font-semibold mb-4">
+                      Financial Summary
+                    </h2>
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                      <div className="border-l-4 border-blue-500 pl-4">
+                        <div className="text-sm text-gray-600 mb-1">
+                          Total Revenue
+                        </div>
+                        <div className="text-2xl font-bold text-gray-900">
+                          ${report.totalRevenue.toFixed(2)}
+                        </div>
+                      </div>
+                      <div className="border-l-4 border-red-500 pl-4">
+                        <div className="text-sm text-gray-600 mb-1">
+                          Total Cost
+                        </div>
+                        <div className="text-2xl font-bold text-red-600">
+                          -${report.totalCost.toFixed(2)}
+                        </div>
+                      </div>
+                      <div className="border-l-4 border-green-500 pl-4">
+                        <div className="text-sm text-gray-600 mb-1">
+                          Gross Profit
+                        </div>
+                        <div className="text-2xl font-bold text-green-600">
+                          ${report.grossProfit?.toFixed(2) || '0.00'}
+                        </div>
+                        <div className="text-sm text-gray-500 mt-1">
+                          {report.profitMargin?.toFixed(1)}% margin
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )}
 
                 {/* Payment Breakdown */}
                 <div className="bg-white p-6 rounded-lg shadow-sm">
@@ -244,7 +304,7 @@ export const ReportsPage: React.FC = () => {
                   </div>
                 </div>
 
-                {/* Top Selling Products */}
+                {/* Top Selling Products - Now with Profit */}
                 <div className="bg-white p-6 rounded-lg shadow-sm">
                   <h2 className="text-xl font-semibold mb-4">
                     Top Selling Products
@@ -268,10 +328,16 @@ export const ReportsPage: React.FC = () => {
                               Category
                             </th>
                             <th className="text-right py-3 px-4 text-sm font-medium text-gray-600">
-                              Quantity Sold
+                              Qty Sold
                             </th>
                             <th className="text-right py-3 px-4 text-sm font-medium text-gray-600">
                               Revenue
+                            </th>
+                            <th className="text-right py-3 px-4 text-sm font-medium text-gray-600">
+                              Profit
+                            </th>
+                            <th className="text-right py-3 px-4 text-sm font-medium text-gray-600">
+                              Margin
                             </th>
                           </tr>
                         </thead>
@@ -300,11 +366,24 @@ export const ReportsPage: React.FC = () => {
                               <td className="py-3 px-4 text-right font-semibold">
                                 {item.quantitySold}
                               </td>
+                              <td className="py-3 px-4 text-right font-semibold text-blue-600">
+                                ${item.revenue?.toFixed(2) || '0.00'}
+                              </td>
                               <td className="py-3 px-4 text-right font-semibold text-green-600">
-                                $
-                                {(
-                                  item.product.price * item.quantitySold
-                                ).toFixed(2)}
+                                ${item.profit?.toFixed(2) || '0.00'}
+                              </td>
+                              <td className="py-3 px-4 text-right">
+                                <span
+                                  className={`font-medium ${
+                                    (item.profitMargin || 0) > 30
+                                      ? 'text-green-600'
+                                      : (item.profitMargin || 0) > 15
+                                        ? 'text-yellow-600'
+                                        : 'text-red-600'
+                                  }`}
+                                >
+                                  {item.profitMargin?.toFixed(1) || '0'}%
+                                </span>
                               </td>
                             </tr>
                           ))}
@@ -383,6 +462,45 @@ export const ReportsPage: React.FC = () => {
                         ))}
                       </tbody>
                     </table>
+                    {totalSales > itemsPerPage && (
+                      <div className="px-6 py-4 border-t flex justify-between items-center">
+                        <div className="text-sm text-gray-600">
+                          Showing {(currentPage - 1) * itemsPerPage + 1} to{' '}
+                          {Math.min(currentPage * itemsPerPage, totalSales)} of{' '}
+                          {totalSales}
+                        </div>
+
+                        <div className="flex gap-2">
+                          <button
+                            onClick={() =>
+                              setCurrentPage((p) => Math.max(1, p - 1))
+                            }
+                            disabled={currentPage === 1}
+                            className="px-4 py-2 border rounded-lg disabled:opacity-50"
+                          >
+                            Previous
+                          </button>
+
+                          <button
+                            onClick={() =>
+                              setCurrentPage((p) =>
+                                Math.min(
+                                  Math.ceil(totalSales / itemsPerPage),
+                                  p + 1,
+                                ),
+                              )
+                            }
+                            disabled={
+                              currentPage >=
+                              Math.ceil(totalSales / itemsPerPage)
+                            }
+                            className="px-4 py-2 border rounded-lg disabled:opacity-50"
+                          >
+                            Next
+                          </button>
+                        </div>
+                      </div>
+                    )}
                   </div>
                 )}
               </div>

@@ -226,9 +226,9 @@ class InvoiceService {
       const doc = this.generatePDF(sale);
       
       // For Electron: Use native printing if available
-      if (window.electron && window.electron.printPDF) {
+      if (window.electron && window.electron.print.pdf) {
         const pdfData = doc.output('datauristring').split(',')[1];
-        const result = await window.electron.printPDF(pdfData);
+        const result = await window.electron.print.pdf(pdfData);
 
         if (!result.success) {
           console.warn('Electron print failed, falling back to browser print');
@@ -291,9 +291,9 @@ class InvoiceService {
     const receipt = this.generateThermalReceipt(sale);
     
     // For Electron with thermal printer
-    if (window.electron && window.electron.printThermal) {
+    if (window.electron && window.electron.print.thermal) {
       try {
-        const result = await window.electron.printThermal(receipt);
+        const result = await window.electron.print.thermal(receipt);
         if (!result.success) {
           throw new Error(result.error || 'Thermal print failed');
         }

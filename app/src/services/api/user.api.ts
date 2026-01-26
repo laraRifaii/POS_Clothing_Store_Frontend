@@ -82,7 +82,7 @@ class UserApi {
   /**
    * Soft delete user (Admin only)
    */
-  async delete(id: number): Promise<{ message: string }> {
+  async softDelete(id: number): Promise<{ message: string }> {
     const response = await apiService.delete<{ message: string }>(
       `${this.AUTH_PREFIX}/users/${id}`
     );

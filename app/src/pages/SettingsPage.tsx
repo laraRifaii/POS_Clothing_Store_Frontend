@@ -33,10 +33,7 @@ export const SettingsPage: React.FC = () => {
     phone: '',
     email: '',
   });
-  useEffect(() => {
-    console.log('SettingsPage mounted, fetching store info...');
-    fetchStoreInfo();
-  }, []);
+ 
   useEffect(() => {
     fetchStoreInfo();
   }, []);

@@ -4,6 +4,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 import { Permissions, UserRole } from '../types/auth.enum';
 import { RotateCcw } from 'lucide-react';
+import { LicenseInfoWidget } from '../components/LicenseInfoWidget';
 
 export const Dashboard: React.FC = () => {
   const navigate = useNavigate();
@@ -71,14 +72,14 @@ export const Dashboard: React.FC = () => {
 
       {/* Main Content */}
       <main className="max-w-7xl mx-auto px-4 py-8 sm:px-6 lg:px-8">
-       
-
+        {/* <LicenseInfoWidget /> */}
+        
         {/* Quick Actions */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 gap-4">
           {hasPermission(Permissions.CREATE_SALE) && (
             <button
               onClick={() => navigate('/sales')}
-              className="bg-blue-600 text-white px-6 py-10 rounded-lg shadow hover:bg-blue-700 transition-colors"
+              className="bg-blue-600 text-white px-10 py-10 rounded-lg shadow hover:bg-blue-700 transition-colors"
             >
               <h3 className="text-lg font-semibold mb-2">New Sale</h3>
               <p className="text-sm opacity-90">Process a new transaction</p>
@@ -123,7 +124,7 @@ export const Dashboard: React.FC = () => {
               <p className="text-sm opacity-90">Manage refunds and returns </p>
             </button>
           )}
-           {hasPermission(Permissions.REFUND_SALE) && (
+          {hasPermission(Permissions.MANAGE_SETTINGS) && (
             <button
               onClick={() => navigate('/settings')}
               className="bg-gray-600 text-white px-6 py-10 rounded-lg shadow hover:bg-gray-700 transition-colors"
@@ -133,9 +134,6 @@ export const Dashboard: React.FC = () => {
             </button>
           )}
         </div>
-
-       
-      
       </main>
     </div>
   );

@@ -14,6 +14,7 @@ export interface SaleItem {
   productId: number;
   quantity: number;
   price: number;
+  costPrice: number;  // Added for profit calculation
   discount: number;
   product: Product;
 }
@@ -30,11 +31,6 @@ export interface Sale {
     id: number;
     username: string;
   };
-}
-
-export interface SalesResponse {
-  sales: Sale[];
-  total: number;
 }
 
 export interface CreateSaleItemDto {
@@ -59,28 +55,58 @@ export interface SaleQueryParams {
   limit?: number;
 }
 
+export interface SalesResponse {
+  sales: Sale[];
+  total: number;
+  message:string;
+}
+
+export interface PaymentBreakdown {
+  paymentType: PaymentType;
+  count: number;
+  total: number;
+}
+
+export interface TopSellingProduct {
+  product: Product;
+  quantitySold: number;
+  revenue: number;
+  cost: number;
+  profit: number;
+  profitMargin: number;
+}
+
 export interface SalesReport {
   totalSales: number;
   totalRevenue: number;
-  paymentBreakdown: Array<{
-    paymentType: PaymentType;
-    count: number;
-    total: number;
-  }>;
-  topSellingProducts: Array<{
-    product: Product;
-    quantitySold: number;
-  }>;
+  totalCost: number;
+  grossProfit: number;
+  profitMargin: number;
+  totalDiscount: number;
+  paymentBreakdown: PaymentBreakdown[];
+  topSellingProducts: TopSellingProduct[];
   startDate: string;
   endDate: string;
+  
+}
+
+export interface CategoryProfit {
+  category: string;
+  revenue: number;
+  cost: number;
+  profit: number;
+  profitMargin: number;
+  itemsSold: number;
 }
 
 class SaleApi {
   private readonly SALE_PREFIX = '/sales';
 
-  /**
-   * Get all sales with optional filters (Manager/Admin only)
-   */
+  async create(data: CreateSaleDto): Promise<Sale> {
+    const response = await apiService.post<Sale>(this.SALE_PREFIX, data);
+    return response;
+  }
+
   async getAll(params?: SaleQueryParams): Promise<SalesResponse> {
     const response = await apiService.get<SalesResponse>(
       this.SALE_PREFIX,
@@ -89,9 +115,6 @@ class SaleApi {
     return response;
   }
 
-  /**
-   * Get sale by ID (Manager/Admin only)
-   */
   async getById(id: number): Promise<Sale> {
     const response = await apiService.get<Sale>(
       `${this.SALE_PREFIX}/${id}`
@@ -99,35 +122,32 @@ class SaleApi {
     return response;
   }
 
-  /**
-   * Create new sale (All authenticated users)
-   */
-  async create(data: CreateSaleDto): Promise<Sale> {
-    const response = await apiService.post<Sale>(
-      this.SALE_PREFIX,
-      data
-    );
-    return response;
-  }
-
-  /**
-   * Get sales report (Manager/Admin only)
-   */
   async getReport(startDate: string, endDate: string): Promise<SalesReport> {
     const response = await apiService.get<SalesReport>(
-      `${this.SALE_PREFIX}/report`,
-      { params: { startDate, endDate } }
+      `${this.SALE_PREFIX}/reports/`,
+      {
+        params: { startDate, endDate }
+      }
     );
     return response;
   }
 
-  /**
-   * Get daily sales (Manager/Admin only)
-   */
-  async getDailySales(date: string): Promise<SalesReport> {
+  async getDailyReport(date: string): Promise<SalesReport> {
     const response = await apiService.get<SalesReport>(
-      `${this.SALE_PREFIX}/daily`,
-      { params: { date } }
+      `${this.SALE_PREFIX}/sales/daily`,
+      {
+        params: { date }
+      }
+    );
+    return response;
+  }
+
+  async getCategoryProfit(startDate: string, endDate: string): Promise<CategoryProfit[]> {
+    const response = await apiService.get<CategoryProfit[]>(
+      `${this.SALE_PREFIX}/reports/category-profit`,
+      {
+        params: { startDate, endDate }
+      }
     );
     return response;
   }

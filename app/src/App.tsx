@@ -4,47 +4,36 @@ import { BrowserRouter } from 'react-router-dom';
 import { AuthProvider } from './contexts/AuthContext';
 import { AppRoutes } from './routes/AppRoutes';
 import { ToastContainer } from 'react-toastify';
-import { storeInfoApi } from './services/api/store-info.api';
-import { invoiceService } from './services/invoice/invoice.service';
+import { LicenseProvider } from './contexts/LicenseContext';
+import { LicenseGuard } from './components/LicenseGuard';
 const App: React.FC = () => {
-  
- useEffect(() => {
-  const loadStoreInfo = async () => {
-    try {
-      const storeInfo = await storeInfoApi.get();
-      if (storeInfo) {
-        invoiceService.setStoreInfo(storeInfo);
-        console.log('✅ Store info loaded:', storeInfo.name);
-      } else {
-        console.log('ℹ️ No store info configured yet. Please set it up in Settings.');
-        invoiceService.setStoreInfo(null);
-      }
-    } catch (error) {
-      console.error('❌ Error loading store info:', error);
-      invoiceService.setStoreInfo(null);
-    }
-  };
-
-  loadStoreInfo();
-}, []);
-
   return (
     <>
       <AuthProvider>
-        <BrowserRouter>
-          <ToastContainer
-            position="top-right"
-            autoClose={3000}
-            hideProgressBar={false}
-            newestOnTop
-            closeOnClick
-            pauseOnFocusLoss={false} 
-            draggable
-            pauseOnHover
-            theme="light" aria-label={undefined}          />
+        <LicenseProvider>
+          <LicenseGuard>
 
-          <AppRoutes />
-        </BrowserRouter>
+            <BrowserRouter>
+              {/* Toast Container with proper configuration */}
+              <ToastContainer
+                position="top-right"
+                autoClose={3000}
+                hideProgressBar={false}
+                newestOnTop={true}
+                closeOnClick={true}
+                rtl={false}
+                pauseOnFocusLoss={true}
+                draggable={true}
+                pauseOnHover={true}
+                theme="light"
+                limit={5} // Allow up to 5 toasts at once
+                style={{ zIndex: 9999 }} // Ensure toasts appear on top
+              />
+
+              <AppRoutes />
+            </BrowserRouter>
+          </LicenseGuard>
+        </LicenseProvider>
       </AuthProvider>
     </>
   );

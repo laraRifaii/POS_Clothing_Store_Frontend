@@ -8,7 +8,8 @@ export interface Product {
   category: string;
   size: string;
   color: string;
-  price: number;
+  costPrice: number;  // What you paid for it
+  salePrice: number;  // What you sell it for
   stock: number;
   isActive: boolean;
   createdAt: string;
@@ -16,6 +17,7 @@ export interface Product {
 }
 
 export interface ProductsResponse {
+  message: string;
   products: Product[];
   total: number;
 }
@@ -26,7 +28,8 @@ export interface CreateProductDto {
   category: string;
   size: string;
   color: string;
-  price: number;
+  costPrice: number;
+  salePrice: number;
   stock: number;
 }
 
@@ -36,7 +39,8 @@ export interface UpdateProductDto {
   category?: string;
   size?: string;
   color?: string;
-  price?: number;
+  costPrice?: number;
+  salePrice?: number;
   stock?: number;
   isActive?: boolean;
 }
@@ -149,3 +153,15 @@ class ProductApi {
 }
 
 export const productApi = new ProductApi();
+
+// Helper to calculate profit margin
+export const calculateProfitMargin = (costPrice: number, salePrice: number): number => {
+  if (salePrice === 0) return 0;
+  return ((salePrice - costPrice) / salePrice) * 100;
+};
+
+// Helper to calculate markup
+export const calculateMarkup = (costPrice: number, salePrice: number): number => {
+  if (costPrice === 0) return 0;
+  return ((salePrice - costPrice) / costPrice) * 100;
+};

@@ -18,6 +18,7 @@ import {
 } from 'lucide-react';
 import { toast } from 'react-toastify';
 import { showDeleteConfirmation } from '../components/DeleteConfirmationModal';
+import { showConfirmModal } from '../components/SaleConfirmationModal';
 
 export const UsersPage: React.FC = () => {
   const [users, setUsers] = useState<User[]>([]);
@@ -94,7 +95,7 @@ export const UsersPage: React.FC = () => {
 
   const handleToggleActive = async (user: User) => {
     const action = user.isActive ? 'deactivate' : 'activate';
-    showDeleteConfirmation(
+    showConfirmModal(
       `Are you sure you want to ${action} user "${user.username}"?`,
       async () => {
         try {
@@ -115,24 +116,101 @@ export const UsersPage: React.FC = () => {
     );
   };
 
-  const handleDelete = async (user: User) => {
+// Updated handleDelete function for UsersPage.tsx
+const handleDelete = async (user: User) => {
+  const isAdmin = user.role === 'ADMIN';
+  const warningMessage = isAdmin
+    ? `⚠️ WARNING: You are about to delete an ADMIN user "${user.username}"`
+    : `Are you sure you want to delete user "${user.username}"?`;
+
+  showDeleteConfirmation(
+    warningMessage,
+    async () => {
+      try {
+        await userApi.hardDelete(user.id);
+
+        // Success toast
+        toast.success('User deleted successfully', {
+          autoClose: 3000,
+          pauseOnHover: true,
+        });
+
+        // Refresh users list
+        setTimeout(fetchUsers, 300);
+      } catch (error: any) {
+        console.error('Error deleting user:', error);
+
+        // Extract error message
+        const errorMessage =
+          error?.response?.data?.message ||
+          error?.message ||
+          'Failed to delete user';
+
+        // Show error toast with longer duration
+        if (errorMessage.toLowerCase().includes('last admin')) {
+          toast.error(
+            '🚫 Cannot delete the last admin user. Create another admin first.',
+            {
+              autoClose: 5000, // 5 seconds
+              pauseOnHover: true,
+              closeOnClick: true,
+            }
+          );
+        } else if (errorMessage.toLowerCase().includes('sales')) {
+          toast.error(
+            '🚫 Cannot delete user with sales history. User will be deactivated instead.',
+            {
+              autoClose: 5000,
+              pauseOnHover: true,
+            }
+          );
+
+          // Optional: fallback to soft delete
+          try {
+            await userApi.softDelete(user.id);
+            toast.info('User has been deactivated', {
+              autoClose: 3000,
+            });
+            setTimeout(fetchUsers, 300);
+          } catch (softDeleteError) {
+            console.error('Soft delete also failed:', softDeleteError);
+          }
+        } else if (errorMessage.toLowerCase().includes('your own account')) {
+          toast.error('🚫 You cannot delete your own account.', {
+            autoClose: 4000,
+            pauseOnHover: true,
+          });
+        } else {
+          // Default: show backend message directly
+          toast.error(errorMessage, {
+            autoClose: 5000,
+            pauseOnHover: true,
+            closeOnClick: true,
+          });
+        }
+      }
+    },
+    {
+      onCancel: () => {
+        console.log('User delete action cancelled');
+      },
+    }
+  );
+};
+
+  // Add soft delete option in your UI
+  const handleSoftDelete = async (user: User) => {
     showDeleteConfirmation(
-      `Are you sure you want to delete user "${user.username}"?`,
+      `Deactivate user "${user.username}"? They can be reactivated later.`,
       async () => {
         try {
-           await userApi.hardDelete(user.id);
-          toast.success('User deleted successfully');
+          await userApi.softDelete(user.id);
+          toast.success('User deactivated successfully');
           fetchUsers();
         } catch (error: any) {
-          console.error('Error deleting user:', error);
-          toast.error(error.message || 'Failed to delete user');
+          console.error('Error deactivating user:', error);
+          toast.error(error.message || 'Failed to deactivate user');
         }
-      },
-       {
-        onCancel: () => {
-          // Optional: Any cleanup or logging when user cancels
-          console.log('User delete action cancelled');
-        },
       },
     );
   };

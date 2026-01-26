@@ -77,6 +77,7 @@ export const ROLE_PERMISSIONS: Record<UserRole, Permissions[]> = {
     Permissions.MANAGE_INVENTORY,
     Permissions.VIEW_REPORTS,
     Permissions.VIEW_USERS,
+    Permissions.MANAGE_SETTINGS,
   ],
   [UserRole.ADMIN]: [
     Permissions.MANAGE_USERS,
@@ -88,5 +89,6 @@ export const ROLE_PERMISSIONS: Record<UserRole, Permissions[]> = {
     Permissions.VIEW_INVENTORY,
     Permissions.VIEW_REPORTS,
     Permissions.EXPORT_REPORTS,
+    Permissions.MANAGE_SETTINGS,
   ],
 };

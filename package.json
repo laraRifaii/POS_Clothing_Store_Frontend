@@ -22,16 +22,19 @@
     "@types/uuid": "^10.0.0",
     "concurrently": "^9.2.1",
     "electron": "^39.2.7",
+    "electron-builder": "^26.4.0",
     "wait-on": "^9.0.3"
   },
   "dependencies": {
     "@tailwindcss/vite": "^4.1.18",
+    "crypto": "^1.0.1",
     "electron-store": "^8.1.0",
     "jsbarcode": "^3.12.3",
     "jspdf": "^4.0.0",
     "jspdf-autotable": "^5.0.7",
     "react-hot-toast": "^2.6.0",
     "react-toastify": "^11.0.5",
+    "serialport": "^13.0.0",
     "tailwindcss": "^4.1.18"
   }
 }

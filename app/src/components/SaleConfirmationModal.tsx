@@ -16,7 +16,7 @@ export const ToastConfirmation: React.FC<ToastConfirmationProps> = ({
 }) => {
   return (
     <div className="min-w-[400px] bg-white">
-      <div className="flex items-center gap-4 pl-4 rounded-lg m-0">
+      <div className="flex items-center gap-3 pl-4 rounded-lg m-0">
         <div className="flex items-center">
          
           <div>
@@ -26,13 +26,13 @@ export const ToastConfirmation: React.FC<ToastConfirmationProps> = ({
             </p>
           </div>
         </div>
-        <div className="flex items-center space-x-2 ml-6 min-w-[140px]">
+        <div className="flex items-center space-x-2 ml-5 min-w-[140px]">
           <button
             onClick={() => {
               onCancel?.();
               toast.dismiss();
             }}
-            className="px-2 py-2 text-sm text-gray-600 hover:text-gray-800 hover:bg-gray-100 rounded transition"
+            className="px-1 py-1 text-sm text-gray-600 hover:text-gray-800 hover:bg-gray-100 rounded transition"
           >
             Cancel
           </button>

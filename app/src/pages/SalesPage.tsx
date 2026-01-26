@@ -1,5 +1,5 @@
-// src/renderer/pages/SalesPage.tsx (Complete Version)
-import React, { useState, useEffect } from 'react';
+// src/renderer/pages/SalesPage.tsx
+import React, { useState, useEffect, useRef } from 'react';
 import { productApi, Product } from '../services/api/product.api';
 import {
   saleApi,
@@ -9,7 +9,6 @@ import {
   Sale,
 } from '../services/api/sale.api';
 import { invoiceService } from '../services/invoice/invoice.service';
-// import { useBarcodeScanner } from '../hooks/useBarcodeScanner';
 import { BarcodeScannerIndicator } from '../components/BarcodeScannerIndicator';
 import BackButton from '../components/backButton';
 import {
@@ -24,7 +23,6 @@ import {
 } from 'lucide-react';
 import { useBarcodeScanner } from '../hooks/useBarcodeScanner';
 import { toast } from 'react-toastify';
-import { showDeleteConfirmation } from '../components/DeleteConfirmationModal';
 import { showConfirmModal } from '../components/SaleConfirmationModal';
 
 interface CartItem {
@@ -41,33 +39,52 @@ export const SalesPage: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [searchResults, setSearchResults] = useState<Product[]>([]);
   const [showSearchResults, setShowSearchResults] = useState(false);
-  const [scannerEnabled, setScannerEnabled] = useState(false);
+  const [scannerEnabled, setScannerEnabled] = useState(true);
   const [lastSale, setLastSale] = useState<Sale | null>(null);
   const [showInvoiceModal, setShowInvoiceModal] = useState(false);
+  const [isPageActive, setIsPageActive] = useState(true);
+  const audioRef = useRef<{ success: HTMLAudioElement; error: HTMLAudioElement } | null>(null);
 
   useEffect(() => {
-    if (showInvoiceModal) {
-      setScannerEnabled(false);
-    }
+    audioRef.current = {
+      success: new Audio('/sounds/beep.mp3'),
+      error: new Audio('/sounds/error.mp3'),
+    };
+  }, []);
+
+  useEffect(() => {
+    setIsPageActive(!showInvoiceModal);
   }, [showInvoiceModal]);
 
-  // Barcode scanner integration
-  useBarcodeScanner({
+  const { reset: resetScanner } = useBarcodeScanner({
     onScan: async (barcode) => {
+      console.log('🔍 Barcode scanned:', barcode);
+      
       try {
-        // Search by SKU
         const product = await productApi.getBySku(barcode);
         addToCart(product);
-        // Optional: Play sound or show notification
-        console.log('Product scanned:', product.name);
-      } catch (error) {
-        console.error('Product not found:', barcode);
-        toast.error(`Product with SKU ${barcode} not found`);
+        
+        audioRef.current?.success.play().catch(() => {});
+        
+        toast.success(`Added: ${product.name}`, {
+          position: 'top-right',
+          autoClose: 2000,
+        });
+      } catch (error: any) {
+        console.error('❌ Product not found:', barcode);
+        
+        audioRef.current?.error.play().catch(() => {});
+        
+        toast.error(`Product not found: ${barcode}`, {
+          position: 'top-right',
+          autoClose: 3000,
+        });
       }
     },
     minLength: 3,
-    scanTimeout: 100,
-    enabled: true, // Can be controlled by a toggle
+    scanTimeout: 50,
+    enabled: scannerEnabled,
+    pageActive: isPageActive,
   });
 
   useEffect(() => {
@@ -149,7 +166,7 @@ export const SalesPage: React.FC = () => {
         item.product.id === productId
           ? {
               ...item,
-              discount: Math.max(0, Math.min(discount, item.product.price)),
+              discount: Math.max(0, Math.min(discount, item.product.salePrice)),
             }
           : item,
       ),
@@ -162,13 +179,24 @@ export const SalesPage: React.FC = () => {
 
   const calculateSubtotal = () => {
     return cart.reduce((sum, item) => {
-      const itemPrice = (item.product.price - item.discount) * item.quantity;
+      const itemPrice = (item.product.salePrice - item.discount) * item.quantity;
       return sum + itemPrice;
     }, 0);
   };
 
   const calculateTotal = () => {
     return Math.max(0, calculateSubtotal() - discount);
+  };
+
+  const openCashDrawer = async () => {
+    try {
+      if (window.electron?.cashDrawer) {
+        await window.electron.cashDrawer.open();
+        console.log('💰 Cash drawer opened');
+      }
+    } catch (error) {
+      console.error('Cash drawer error:', error);
+    }
   };
 
   const handleCheckout = async () => {
@@ -187,7 +215,7 @@ export const SalesPage: React.FC = () => {
               (item): CreateSaleItemDto => ({
                 productId: item.product.id,
                 quantity: item.quantity,
-                price: item.product.price,
+                price: item.product.salePrice,
                 discount: item.discount,
               }),
             ),
@@ -197,16 +225,22 @@ export const SalesPage: React.FC = () => {
 
           const response = await saleApi.create(saleData);
 
+          if (paymentType === PaymentType.CASH) {
+            await openCashDrawer();
+          }
+
           setLastSale(response);
           setShowInvoiceModal(true);
 
-          // Reset cart
           setCart([]);
           setDiscount(0);
           setPaymentType(PaymentType.CASH);
+          
+          audioRef.current?.success.play().catch(() => {});
         } catch (error: any) {
           console.error('Error processing sale:', error);
           toast.error(error.message || 'Failed to process sale');
+          audioRef.current?.error.play().catch(() => {});
         } finally {
           setLoading(false);
         }
@@ -223,6 +257,7 @@ export const SalesPage: React.FC = () => {
     if (!lastSale) return;
     try {
       await invoiceService.print(lastSale);
+      toast.success('Invoice sent to printer');
     } catch (error) {
       console.error('Print error:', error);
       toast.error('Failed to print invoice');
@@ -233,18 +268,11 @@ export const SalesPage: React.FC = () => {
     if (!lastSale) return;
     try {
       invoiceService.download(lastSale);
+      toast.success('Invoice downloaded');
     } catch (error) {
       console.error('Download error:', error);
       toast.error('Failed to download invoice');
     }
-  };
-
-  const playSound = (type: 'success' | 'error') => {
-    // Optional: Play beep sound
-    const audio = new Audio(
-      type === 'success' ? '/sounds/beep.mp3' : '/sounds/error.mp3',
-    );
-    audio.play().catch(() => {}); // Ignore if sound files don't exist
   };
 
   return (
@@ -256,13 +284,24 @@ export const SalesPage: React.FC = () => {
             <h1 className="text-3xl font-bold text-gray-900">Point of Sale</h1>
           </div>
 
-          <div className="text-sm text-gray-600">
-            {scannerEnabled ? '🟢 Scanner Active' : '🔴 Scanner Off'}
+          <div className="flex items-center gap-3">
+            <div className={`px-3 py-1 rounded-full text-sm font-medium ${
+              scannerEnabled && isPageActive 
+                ? 'bg-green-100 text-green-700' 
+                : 'bg-gray-100 text-gray-600'
+            }`}>
+              {scannerEnabled && isPageActive ? '🟢 Scanner Active' : '🔴 Scanner Off'}
+            </div>
+            <button
+              onClick={() => setScannerEnabled(!scannerEnabled)}
+              className="px-3 py-1 bg-blue-100 text-blue-700 rounded hover:bg-blue-200 text-sm"
+            >
+              {scannerEnabled ? 'Disable' : 'Enable'} Scanner
+            </button>
           </div>
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* Product Search & Selection */}
           <div className="lg:col-span-2 bg-white rounded-lg shadow-sm p-6">
             <h2 className="text-xl font-semibold mb-4">Add Products</h2>
 
@@ -272,11 +311,13 @@ export const SalesPage: React.FC = () => {
                 size={20}
               />
               <input
+                id="product-search"
                 type="text"
                 placeholder="Search by name, SKU, or scan barcode..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent barcode-input"
+                autoComplete="off"
               />
 
               {showSearchResults && searchResults.length > 0 && (
@@ -299,7 +340,10 @@ export const SalesPage: React.FC = () => {
                         </div>
                         <div className="text-right ml-4">
                           <div className="font-bold text-blue-600">
-                            ${product.price.toFixed(2)}
+                            ${product.salePrice.toFixed(2)}
+                          </div>
+                          <div className="text-xs text-gray-500">
+                            Cost: ${product.costPrice.toFixed(2)}
                           </div>
                           <div
                             className={`text-sm ${product.stock <= 10 ? 'text-red-600' : 'text-green-600'}`}
@@ -314,7 +358,6 @@ export const SalesPage: React.FC = () => {
               )}
             </div>
 
-            {/* Cart Items */}
             <div className="space-y-4">
               <h3 className="font-semibold text-gray-700">
                 Cart Items ({cart.length})
@@ -324,13 +367,14 @@ export const SalesPage: React.FC = () => {
                 <div className="text-center py-12 text-gray-400">
                   <ShoppingCart size={48} className="mx-auto mb-4" />
                   <p>Cart is empty. Search and add products to start a sale.</p>
+                  <p className="text-sm mt-2">💡 Scan barcodes to add products quickly</p>
                 </div>
               ) : (
                 <div className="space-y-3">
                   {cart.map((item) => (
                     <div
                       key={item.product.id}
-                      className="border border-gray-200 rounded-lg p-4"
+                      className="border border-gray-200 rounded-lg p-4 hover:border-blue-300 transition"
                     >
                       <div className="flex justify-between items-start mb-3">
                         <div className="flex-1">
@@ -344,7 +388,8 @@ export const SalesPage: React.FC = () => {
                         </div>
                         <button
                           onClick={() => removeFromCart(item.product.id)}
-                          className="text-red-500 hover:text-red-700"
+                          className="text-red-500 hover:text-red-700 p-1"
+                          title="Remove item"
                         >
                           <Trash2 size={18} />
                         </button>
@@ -363,7 +408,7 @@ export const SalesPage: React.FC = () => {
                                   item.quantity - 1,
                                 )
                               }
-                              className="p-1 border rounded hover:bg-gray-100"
+                              className="min-w-[44px] min-h-[44px] p-2 border rounded hover:bg-gray-100 active:bg-gray-200"
                             >
                               <Minus size={16} />
                             </button>
@@ -378,7 +423,7 @@ export const SalesPage: React.FC = () => {
                                   parseInt(e.target.value) || 1,
                                 )
                               }
-                              className="w-16 text-center border rounded px-2 py-1"
+                              className="w-16 text-center border rounded px-2 py-2 min-h-[44px]"
                             />
                             <button
                               onClick={() =>
@@ -387,7 +432,7 @@ export const SalesPage: React.FC = () => {
                                   item.quantity + 1,
                                 )
                               }
-                              className="p-1 border rounded hover:bg-gray-100"
+                              className="min-w-[44px] min-h-[44px] p-2 border rounded hover:bg-gray-100 active:bg-gray-200"
                             >
                               <Plus size={16} />
                             </button>
@@ -396,21 +441,21 @@ export const SalesPage: React.FC = () => {
 
                         <div>
                           <label className="text-xs text-gray-600 block mb-1">
-                            Unit Price
+                            Sale Price
                           </label>
-                          <div className="font-semibold">
-                            ${item.product.price.toFixed(2)}
+                          <div className="font-semibold py-2">
+                            ${item.product.salePrice.toFixed(2)}
                           </div>
                         </div>
 
                         <div>
                           <label className="text-xs text-gray-600 block mb-1">
-                            Discount
+                            Discount ($)
                           </label>
                           <input
                             type="number"
                             min="0"
-                            max={item.product.price}
+                            max={item.product.salePrice}
                             step="0.01"
                             value={item.discount}
                             onChange={(e) =>
@@ -419,7 +464,7 @@ export const SalesPage: React.FC = () => {
                                 parseFloat(e.target.value) || 0,
                               )
                             }
-                            className="w-full border rounded px-2 py-1"
+                            className="w-full border rounded px-2 py-2 min-h-11"
                           />
                         </div>
                       </div>
@@ -429,7 +474,7 @@ export const SalesPage: React.FC = () => {
                         <span className="font-bold text-lg">
                           $
                           {(
-                            (item.product.price - item.discount) *
+                            (item.product.salePrice - item.discount) *
                             item.quantity
                           ).toFixed(2)}
                         </span>
@@ -441,7 +486,6 @@ export const SalesPage: React.FC = () => {
             </div>
           </div>
 
-          {/* Checkout Panel */}
           <div className="bg-white rounded-lg shadow-sm p-6 h-fit sticky top-8">
             <h2 className="text-xl font-semibold mb-6">Checkout</h2>
 
@@ -464,7 +508,7 @@ export const SalesPage: React.FC = () => {
                   step="0.01"
                   value={discount}
                   onChange={(e) => setDiscount(parseFloat(e.target.value) || 0)}
-                  className="w-full border border-gray-300 rounded-lg px-3 py-2"
+                  className="w-full border border-gray-300 rounded-lg px-3 py-3 min-h-[44px]"
                 />
               </div>
 
@@ -486,7 +530,7 @@ export const SalesPage: React.FC = () => {
                 {Object.values(PaymentType).map((type) => (
                   <label
                     key={type}
-                    className="flex items-center gap-2 cursor-pointer"
+                    className="flex items-center gap-3 cursor-pointer min-h-[44px] p-2 rounded hover:bg-gray-50"
                   >
                     <input
                       type="radio"
@@ -496,9 +540,9 @@ export const SalesPage: React.FC = () => {
                       onChange={(e) =>
                         setPaymentType(e.target.value as PaymentType)
                       }
-                      className="w-4 h-4"
+                      className="w-5 h-5"
                     />
-                    <span>{type}</span>
+                    <span className="text-base">{type}</span>
                   </label>
                 ))}
               </div>
@@ -507,7 +551,7 @@ export const SalesPage: React.FC = () => {
             <button
               onClick={handleCheckout}
               disabled={cart.length === 0 || loading}
-              className="w-full bg-blue-600 text-white py-3 rounded-lg hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed transition flex items-center justify-center gap-2 text-lg font-semibold"
+              className="w-full bg-blue-600 text-white py-4 rounded-lg hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed transition flex items-center justify-center gap-2 text-lg font-semibold min-h-[56px] active:bg-blue-800"
             >
               <DollarSign size={24} />
               {loading ? 'Processing...' : 'Complete Sale'}
@@ -516,12 +560,13 @@ export const SalesPage: React.FC = () => {
             {cart.length > 0 && (
               <button
                 onClick={() => {
-                  if (window.confirm('Clear cart?')) {
+                  showConfirmModal('Clear entire cart?', () => {
                     setCart([]);
                     setDiscount(0);
-                  }
+                    resetScanner();
+                  });
                 }}
-                className="w-full mt-3 bg-red-100 text-red-700 py-2 rounded-lg hover:bg-red-200 transition"
+                className="w-full mt-3 bg-red-100 text-red-700 py-3 rounded-lg hover:bg-red-200 transition min-h-[44px]"
               >
                 Clear Cart
               </button>
@@ -530,15 +575,8 @@ export const SalesPage: React.FC = () => {
         </div>
       </div>
 
-      {/* Barcode Scanner Indicator */}
-      <BarcodeScannerIndicator
-        enabled={scannerEnabled}
-        onToggle={() => setScannerEnabled(!scannerEnabled)}
-      />
-
-      {/* Invoice Modal */}
       {showInvoiceModal && lastSale && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-lg p-8 max-w-md w-full">
             <h2 className="text-2xl font-bold mb-4 text-green-600">
               ✓ Sale Completed!
@@ -558,7 +596,7 @@ export const SalesPage: React.FC = () => {
             <div className="space-y-3">
               <button
                 onClick={handlePrintInvoice}
-                className="w-full bg-blue-600 text-white py-3 rounded-lg hover:bg-blue-700 flex items-center justify-center gap-2"
+                className="w-full bg-blue-600 text-white py-4 rounded-lg hover:bg-blue-700 flex items-center justify-center gap-2 min-h-[56px] text-lg active:bg-blue-800"
               >
                 <Printer size={20} />
                 Print Invoice
@@ -566,15 +604,18 @@ export const SalesPage: React.FC = () => {
 
               <button
                 onClick={handleDownloadInvoice}
-                className="w-full bg-gray-600 text-white py-3 rounded-lg hover:bg-gray-700 flex items-center justify-center gap-2"
+                className="w-full bg-gray-600 text-white py-4 rounded-lg hover:bg-gray-700 flex items-center justify-center gap-2 min-h-[56px] text-lg active:bg-gray-800"
               >
                 <Download size={20} />
                 Download PDF
               </button>
 
               <button
-                onClick={() => setShowInvoiceModal(false)}
-                className="w-full bg-gray-200 text-gray-800 py-3 rounded-lg hover:bg-gray-300"
+                onClick={() => {
+                  setShowInvoiceModal(false);
+                  setLastSale(null);
+                }}
+                className="w-full bg-gray-200 text-gray-800 py-4 rounded-lg hover:bg-gray-300 min-h-[56px] text-lg active:bg-gray-400"
               >
                 Close
               </button>

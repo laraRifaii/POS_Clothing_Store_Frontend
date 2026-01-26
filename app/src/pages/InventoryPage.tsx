@@ -24,7 +24,7 @@ export const InventoryPage: React.FC = () => {
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
   const [totalProducts, setTotalProducts] = useState(0);
-  const itemsPerPage = 20;
+  const itemsPerPage = 10;
   const { user, session, hasPermission } = useAuth();
   const [formData, setFormData] = useState<CreateProductDto>({
     name: '',
@@ -32,7 +32,8 @@ export const InventoryPage: React.FC = () => {
     category: '',
     size: '',
     color: '',
-    price: 0,
+    costPrice: 0,
+    salePrice: 0,
     stock: 0,
   });
 
@@ -50,6 +51,9 @@ export const InventoryPage: React.FC = () => {
         page: currentPage,
         limit: itemsPerPage,
       });
+      if (response.total === 0) {
+        toast.info(response.message);
+      }
       setProducts(response.products);
       setTotalProducts(response.total);
     } catch (error: any) {
@@ -100,7 +104,8 @@ export const InventoryPage: React.FC = () => {
       category: product.category,
       size: product.size,
       color: product.color,
-      price: product.price,
+      costPrice: product.costPrice,
+      salePrice: product.salePrice,
       stock: product.stock,
     });
     setShowModal(true);
@@ -134,13 +139,27 @@ export const InventoryPage: React.FC = () => {
       category: '',
       size: '',
       color: '',
-      price: 0,
+      costPrice: 0,
+      salePrice: 0,
       stock: 0,
     });
     setEditingProduct(null);
   };
 
   const totalPages = Math.ceil(totalProducts / itemsPerPage);
+
+  const generateSKU = () => {
+    const prefix = formData.category
+      ? formData.category.substring(0, 3).toUpperCase()
+      : 'PRD';
+
+    const randomPart = Math.random().toString(36).substring(2, 6).toUpperCase();
+    const timestamp = Date.now().toString().slice(-4);
+
+    const sku = `${prefix}-${randomPart}-${timestamp}`;
+
+    setFormData({ ...formData, sku });
+  };
 
   return (
     <div className="p-8 bg-gray-50 min-h-screen">
@@ -247,11 +266,17 @@ export const InventoryPage: React.FC = () => {
                       Color
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                      Price
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
                       Stock
                     </th>
+
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                      Sale Price
+                    </th>
+
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                      Cost Price
+                    </th>
+
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
                       Actions
                     </th>
@@ -278,9 +303,6 @@ export const InventoryPage: React.FC = () => {
                       <td className="px-6 py-4 text-sm text-gray-600">
                         {product.color}
                       </td>
-                      <td className="px-6 py-4 text-sm font-semibold text-gray-900">
-                        ${product.price.toFixed(2)}
-                      </td>
                       <td className="px-6 py-4 text-sm">
                         <span
                           className={`px-2 py-1 rounded ${product.stock <= 10 ? 'bg-red-100 text-red-800' : 'bg-green-100 text-green-800'}`}
@@ -291,6 +313,14 @@ export const InventoryPage: React.FC = () => {
                           )}
                         </span>
                       </td>
+                      <td className="px-6 py-4 text-sm font-semibold text-gray-900">
+                        ${product.salePrice.toFixed(2)}
+                      </td>
+
+                      <td className="px-6 py-4 text-sm font-semibold text-gray-900">
+                        ${product.costPrice.toFixed(2)}
+                      </td>
+
                       <td className="px-6 py-4 text-sm">
                         <div className="flex gap-2">
                           <button
@@ -300,7 +330,9 @@ export const InventoryPage: React.FC = () => {
                             <Edit2 size={18} />
                           </button>
                           <button
-                            onClick={() => handleDelete(product.id, product.name)}
+                            onClick={() =>
+                              handleDelete(product.id, product.name)
+                            }
                             className="text-red-600 hover:text-red-800"
                           >
                             <Trash2 size={18} />
@@ -380,6 +412,7 @@ export const InventoryPage: React.FC = () => {
                   <label className="block text-sm font-medium text-gray-700 mb-1">
                     SKU
                   </label>
+
                   <input
                     type="text"
                     required
@@ -389,6 +422,14 @@ export const InventoryPage: React.FC = () => {
                     }
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
                   />
+
+                  <button
+                    type="button"
+                    onClick={generateSKU}
+                    className="mt-2 text-sm text-blue-600 hover:text-blue-800"
+                  >
+                    Generate SKU automatically
+                  </button>
                 </div>
 
                 <div>
@@ -441,27 +482,6 @@ export const InventoryPage: React.FC = () => {
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
                   />
                 </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Price ($)
-                  </label>
-                  <input
-                    type="number"
-                    required
-                    step="0.01"
-                    min="0"
-                    value={formData.price}
-                    onChange={(e) =>
-                      setFormData({
-                        ...formData,
-                        price: parseFloat(e.target.value),
-                      })
-                    }
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-                  />
-                </div>
-
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
                     Stock
@@ -475,6 +495,44 @@ export const InventoryPage: React.FC = () => {
                       setFormData({
                         ...formData,
                         stock: parseInt(e.target.value),
+                      })
+                    }
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Cost Price ($)
+                  </label>
+                  <input
+                    type="number"
+                    required
+                    step="0.01"
+                    min="0"
+                    value={formData.costPrice}
+                    onChange={(e) =>
+                      setFormData({
+                        ...formData,
+                        costPrice: parseFloat(e.target.value),
+                      })
+                    }
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Sale Price ($)
+                  </label>
+                  <input
+                    type="number"
+                    required
+                    step="0.01"
+                    min="0"
+                    value={formData.salePrice}
+                    onChange={(e) =>
+                      setFormData({
+                        ...formData,
+                        salePrice: parseFloat(e.target.value),
                       })
                     }
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"

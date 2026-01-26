@@ -13,3 +13,21 @@ body {
 .Toastify__toast-theme--light {
   width: 440px;
 }
+* {
+  -webkit-touch-callout: none;
+  -webkit-user-select: none;
+  user-select: none;
+  touch-action: manipulation;
+}
+
+input, textarea {
+  -webkit-user-select: text;
+  user-select: text;
+}
+
+/* Make touch targets larger (min 44x44px) */
+/* button, .clickable {
+  min-width: 44px;
+  min-height: 44px;
+  padding: 12px 16px;
+} */
