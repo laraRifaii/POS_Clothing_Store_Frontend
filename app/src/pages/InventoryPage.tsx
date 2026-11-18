@@ -127,7 +127,6 @@ export const InventoryPage: React.FC = () => {
       {
         onCancel: () => {
           // Optional: Any cleanup or logging when user cancels
-          console.log('Delete cancelled');
         },
       },
     );

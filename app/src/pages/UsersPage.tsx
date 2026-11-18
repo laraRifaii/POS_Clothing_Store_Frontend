@@ -35,11 +35,7 @@ export const UsersPage: React.FC = () => {
     fetchUsers();
   }, []);
 
-  // Debug: Log users state
-  useEffect(() => {
-    console.log('Users state:', users);
-    console.log('Is array:', Array.isArray(users));
-  }, [users]);
+
 
   const fetchUsers = async () => {
     try {
@@ -109,8 +105,7 @@ export const UsersPage: React.FC = () => {
       },
       {
         onCancel: () => {
-          // Optional: Any cleanup or logging when user cancels
-          console.log('User toggle active action cancelled');
+         
         },
       },
     );
@@ -189,11 +184,6 @@ const handleDelete = async (user: User) => {
           });
         }
       }
-    },
-    {
-      onCancel: () => {
-        console.log('User delete action cancelled');
-      },
     }
   );
 };

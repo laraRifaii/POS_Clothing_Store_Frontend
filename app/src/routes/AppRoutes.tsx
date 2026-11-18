@@ -38,10 +38,7 @@ export const AppRoutes: React.FC = () => {
         <Route
           path="/settings"
           element={
-            <PermissionGuard 
-              roles={[UserRole.ADMIN]}
-              permissions={[Permissions.MANAGE_USERS]}
-            >
+            <PermissionGuard permissions={[Permissions.MANAGE_SETTINGS]}>
               <SettingsPage />
             </PermissionGuard>
           }

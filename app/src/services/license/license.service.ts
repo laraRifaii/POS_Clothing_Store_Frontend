@@ -28,7 +28,6 @@ class LicenseService {
   async saveLicense(licenseKey: string): Promise<void> {
     try {
       await window.electron.store.set(this.LICENSE_KEY, licenseKey);
-      console.log('License saved successfully');
     } catch (error) {
       console.error('Failed to save license:', error);
       throw new Error('Could not save license key');
@@ -131,7 +130,6 @@ class LicenseService {
   async clearLicense(): Promise<void> {
     try {
       await window.electron.store.delete(this.LICENSE_KEY);
-      console.log('License cleared');
     } catch (error) {
       console.error('Failed to clear license:', error);
     }

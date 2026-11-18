@@ -1,15 +1,18 @@
 {
   "name": "app",
-  "version": "0.1.0",
+  "version": "1.0.0",
+  "description": "POS System React App",
+  "author": "Lara Rifaii",
   "private": true,
+  "main": "../main.js",
   "dependencies": {
     "@tailwindcss/vite": "^4.1.18",
     "@types/react": "^19.2.8",
     "@types/react-dom": "^19.2.3",
     "axios": "^1.13.2",
-    "crypto": "^1.0.1",
-    "electron-store": "^11.0.2",
     "formik": "^2.4.9",
+    "jspdf": "^4.0.0",
+    "jspdf-autotable": "^5.0.7",
     "lucide-react": "^0.562.0",
     "react": "^19.2.3",
     "react-dom": "^19.2.3",
@@ -22,27 +25,8 @@
   },
   "scripts": {
     "dev": "vite",
-    "electron": "electron .",
     "build": "vite build",
     "preview": "vite preview"
-  },
-  "eslintConfig": {
-    "extends": [
-      "react-app",
-      "react-app/jest"
-    ]
-  },
-  "browserslist": {
-    "production": [
-      ">0.2%",
-      "not dead",
-      "not op_mini all"
-    ],
-    "development": [
-      "last 1 chrome version",
-      "last 1 firefox version",
-      "last 1 safari version"
-    ]
   },
   "devDependencies": {
     "@types/node": "^25.0.8",

@@ -6,7 +6,7 @@ contextBridge.exposeInMainWorld('electron', {
     set: (key, value) => ipcRenderer.invoke('store:set', key, value),
     delete: (key) => ipcRenderer.invoke('store:delete', key),
   },
-   license: {
+  license: {
     verify: (licenseKey) => ipcRenderer.invoke('license:verify', licenseKey),
   },
   print: {
@@ -21,6 +21,7 @@ contextBridge.exposeInMainWorld('electron', {
     getPlatform: () => process.platform,
     getVersion: () => ipcRenderer.invoke('get-app-version'),
   },
-  
- 
+  keyboard: {
+    show: () => ipcRenderer.invoke('show-keyboard'),
+  },
 });

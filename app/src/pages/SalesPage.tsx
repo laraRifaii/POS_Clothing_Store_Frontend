@@ -1,4 +1,3 @@
-// src/renderer/pages/SalesPage.tsx
 import React, { useState, useEffect, useRef } from 'react';
 import { productApi, Product } from '../services/api/product.api';
 import {
@@ -58,7 +57,6 @@ export const SalesPage: React.FC = () => {
 
   const { reset: resetScanner } = useBarcodeScanner({
     onScan: async (barcode) => {
-      console.log('🔍 Barcode scanned:', barcode);
       
       try {
         const product = await productApi.getBySku(barcode);
@@ -192,7 +190,6 @@ export const SalesPage: React.FC = () => {
     try {
       if (window.electron?.cashDrawer) {
         await window.electron.cashDrawer.open();
-        console.log('💰 Cash drawer opened');
       }
     } catch (error) {
       console.error('Cash drawer error:', error);

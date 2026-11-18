@@ -33,7 +33,6 @@ export const ReportsPage: React.FC = () => {
     try {
       const response = await saleApi.getReport(startDate, endDate);
       setReport(response);
-      console.log('Report data:', response);
     } catch (error: any) {
       console.error('Error fetching report:', error);
       toast.error(error.message || 'Failed to fetch report');

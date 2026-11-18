@@ -1,14 +1,26 @@
 import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 import tailwindcss from '@tailwindcss/vite';
+import path from 'path/win32';
 
 export default defineConfig({
   plugins: [react(), tailwindcss()],
-  server: {
-    port: 5173,
-    strictPort: true,
+
+  base: './',
+
+  build: {
+    outDir: 'dist',
+    assetsDir: 'assets',
   },
-  define: {
-    'import.meta.env.BACKEND_URL': JSON.stringify(process.env.BACKEND_URL || 'http://localhost:3000')
-  }
+
+  resolve: {
+    alias: {
+      '@': path.resolve(__dirname, './src'),
+    },
+  },
+
+  server: {
+    open:false,
+    port: 5173,
+  },
 });

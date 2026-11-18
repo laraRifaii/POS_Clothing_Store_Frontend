@@ -1,0 +1,27 @@
+appId: com.yourcompany.pos
+productName: POS System
+
+directories:
+  output: release
+  buildResources: assets
+
+files:
+  - main.js
+  - preload.js
+  - package.json
+  - renderer/**/*
+  - node_modules/electron-store/**/*
+  - "!app/**/*"
+  - "!app"
+  - "!**/*.md"
+  - "!**/test/**"
+  - "!**/.git/**"
+  - "!node_modules/**/{test,tests,__tests__}/**"
+
+asar: true
+npmRebuild: false
+buildDependenciesFromSource: false
+
+win:
+  target:
+    - portable

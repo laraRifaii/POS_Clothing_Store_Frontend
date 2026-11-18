@@ -19,11 +19,13 @@ export const LicenseActivationPage: React.FC = () => {
 
       if (success) {
         // License activated successfully
-        window.location.reload();
+        // Don't reload! The context will update and LicenseGuard will re-render
+        // The state change in LicenseContext will automatically cause re-render
       } else {
         setError('Invalid license key. Please check and try again.');
       }
     } catch (err) {
+      console.error('❌ Activation error:', err);
       setError('Failed to activate license. Please try again.');
     } finally {
       setLoading(false);

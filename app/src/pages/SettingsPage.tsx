@@ -363,7 +363,7 @@ export const SettingsPage: React.FC = () => {
                 {storeInfo.logoUrl ? (
                   <div className="w-32 h-32 border-2 border-gray-300 rounded-lg overflow-hidden">
                     <img
-                      src={`${import.meta.env.BACKEND_URL || 'http://localhost:3000'}/${storeInfo.logoUrl}`}
+                      src={`${import.meta.env.VITE_API_URL || 'http://localhost:3000'}/${storeInfo.logoUrl}`}
                       alt="Store Logo"
                       className="w-full h-full object-cover"
                     />

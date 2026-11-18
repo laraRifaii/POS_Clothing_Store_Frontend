@@ -25,7 +25,6 @@ class StorageService {
       if (!result) {
         throw new Error('Failed to save session');
       }
-      console.log('Session saved successfully');
     } catch (error) {
       console.error('Failed to save session:', error);
       throw new Error('Could not save session');
@@ -45,18 +44,15 @@ class StorageService {
       const session = await window.electron.store.get(this.SESSION_KEY);
       
       if (!session) {
-        console.log('No session found in store');
         return null;
       }
 
       // Check if session is expired
       if (this.isSessionExpired(session)) {
-        console.log('Session expired, clearing...');
         await this.clearSession();
         return null;
       }
 
-      console.log('Session retrieved successfully');
       return session as Session;
     } catch (error) {
       console.error('Failed to get session:', error);
@@ -74,7 +70,6 @@ class StorageService {
 
     try {
       await window.electron.store.delete(this.SESSION_KEY);
-      console.log('Session cleared successfully');
     } catch (error) {
       console.error('Failed to clear session:', error);
       throw new Error('Could not clear session');
@@ -102,7 +97,6 @@ class StorageService {
       };
       
       await this.saveSession(extendedSession);
-      console.log('Session extended successfully');
     }
   }
 

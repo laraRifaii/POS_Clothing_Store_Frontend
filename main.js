@@ -1,81 +1,89 @@
 const { app, BrowserWindow, ipcMain } = require('electron');
 const Store = require('electron-store');
 const path = require('path');
-const crypto = require('crypto'); // ← ADD THIS
-const fs = require('fs'); // ← ADD THIS
+const crypto = require('crypto');
 
 // License configuration - MUST match license-generator.js
 const SECRET_KEY = '7RET-WVWH-423Y-1SVY-NJHV-BLBM-LPSY-EWFW';
+
 const ALGORITHM = 'aes-256-cbc';
-
-// Simple file-based store
-// class Store {
-//   constructor(options = {}) {
-//     this.name = options.name || 'store';
-//     const userDataPath = app.getPath('userData');
-//     this.path = path.join(userDataPath, `${this.name}.json`);
-//     this.data = {};
-//     this.load();
-
-//     console.log('Store initialized at:', this.path);
-//   }
-
-//   load() {
-//     try {
-//       if (fs.existsSync(this.path)) {
-//         const fileData = fs.readFileSync(this.path, 'utf8');
-//         this.data = JSON.parse(fileData);
-//         console.log('Store data loaded');
-//       }
-//     } catch (error) {
-//       console.error('Error loading store:', error);
-//       this.data = {};
-//     }
-//   }
-
-//   save() {
-//     try {
-//       const dir = path.dirname(this.path);
-//       if (!fs.existsSync(dir)) {
-//         fs.mkdirSync(dir, { recursive: true });
-//       }
-//       fs.writeFileSync(this.path, JSON.stringify(this.data, null, 2), 'utf8');
-//     } catch (error) {
-//       console.error('Error saving store:', error);
-//     }
-//   }
-
-//   get(key) {
-//     return this.data[key];
-//   }
-
-//   set(key, value) {
-//     this.data[key] = value;
-//     this.save();
-//   }
-
-//   delete(key) {
-//     delete this.data[key];
-//     this.save();
-//   }
-
-//   clear() {
-//     this.data = {};
-//     this.save();
-//   }
-// }
 
 const store = new Store({
   name: 'pos-session',
-  encryptionKey: 'pos-system-secret-key-2024',
+  encryptionKey:
+    '5fe8f014371b71c863a34e3ab9423936d2bac8941069d0a0f91fd1326f53a352',
 });
 
 let mainWindow;
-app.disableHardwareAcceleration();
 
-/**
- * Verify license key using crypto
- */
+function createWindow() {
+  mainWindow = new BrowserWindow({
+    width: 1200,
+    height: 800,
+    fullscreen: false,
+    kiosk: false,
+    webPreferences: {
+      preload: path.join(__dirname, 'preload.js'),
+      nodeIntegration: false,
+      contextIsolation: true,
+      webviewTag: false,
+      enableRemoteModule: false,
+      sandbox: false,
+      backgroundThrottling: false,
+      enableBlinkFeatures: 'PointerEvent',
+    },
+  });
+
+  if (!app.isPackaged) {
+    mainWindow.loadURL('http://localhost:5173');
+    mainWindow.webContents.openDevTools();
+  } else {
+    // Production - load from renderer folder
+    mainWindow.loadFile(path.join(__dirname, 'renderer', 'index.html'));
+  }
+  // Barcode scanner support (works automatically as keyboard input)
+  mainWindow.webContents.on('before-input-event', (event, input) => {
+    // Let barcode scanner input reach React app naturally
+  });
+
+  mainWindow.on('closed', () => {
+    mainWindow = null;
+  });
+}
+
+// ===============================
+// App Lifecycle
+// ===============================
+
+app.whenReady().then(createWindow);
+
+app.on('window-all-closed', () => {
+  if (process.platform !== 'darwin') {
+    app.quit();
+  }
+});
+
+app.on('activate', () => {
+  if (BrowserWindow.getAllWindows().length === 0) {
+    createWindow();
+  }
+});
+
+// ===============================
+// On-Screen Keyboard
+// ===============================
+
+ipcMain.handle('show-keyboard', async () => {
+  if (process.platform === 'win32') {
+    require('child_process').exec('osk.exe');
+  }
+  return { success: true };
+});
+
+// ===============================
+// License Verification
+// ===============================
+
 ipcMain.handle('license:verify', (_event, formattedKey) => {
   try {
     if (!formattedKey) {
@@ -86,18 +94,9 @@ ipcMain.handle('license:verify', (_event, formattedKey) => {
       };
     }
 
-    console.log('Verifying license key...');
-
-    // Generate key from secret
     const key = crypto.createHash('sha256').update(SECRET_KEY).digest();
-
-    // Remove dashes and any whitespace
     const cleanKey = formattedKey.replace(/-/g, '').replace(/\s/g, '');
 
-    console.log('Clean key length:', cleanKey.length);
-    console.log('Clean key length is even?', cleanKey.length % 2 === 0);
-
-    // Validate key format
     if (cleanKey.length < 32) {
       return {
         isValid: false,
@@ -106,7 +105,6 @@ ipcMain.handle('license:verify', (_event, formattedKey) => {
       };
     }
 
-    // Check if key length is even (required for hex decoding)
     if (cleanKey.length % 2 !== 0) {
       return {
         isValid: false,
@@ -115,12 +113,8 @@ ipcMain.handle('license:verify', (_event, formattedKey) => {
       };
     }
 
-    // Extract IV (first 32 hex chars = 16 bytes)
     const ivHex = cleanKey.substring(0, 32);
     const encrypted = cleanKey.substring(32);
-
-    console.log('IV length:', ivHex.length);
-    console.log('Encrypted data length:', encrypted.length);
 
     if (encrypted.length % 2 !== 0) {
       return {
@@ -131,15 +125,12 @@ ipcMain.handle('license:verify', (_event, formattedKey) => {
     }
 
     const iv = Buffer.from(ivHex, 'hex');
-
-    // Decrypt
     const decipher = crypto.createDecipheriv(ALGORITHM, key, iv);
     let decrypted = decipher.update(encrypted, 'hex', 'utf8');
     decrypted += decipher.final('utf8');
 
     const licenseData = JSON.parse(decrypted);
 
-    // Validate structure
     if (!licenseData.id || !licenseData.exp || !licenseData.name) {
       return {
         isValid: false,
@@ -148,17 +139,11 @@ ipcMain.handle('license:verify', (_event, formattedKey) => {
       };
     }
 
-    // Check expiry
     const now = Date.now();
     const isExpired = now > licenseData.exp;
     const daysRemaining = Math.ceil(
       (licenseData.exp - now) / (1000 * 60 * 60 * 24),
     );
-
-    console.log('✅ License verified successfully');
-    console.log('Client:', licenseData.name);
-    console.log('Expires:', new Date(licenseData.exp).toLocaleDateString());
-    console.log('Days remaining:', daysRemaining);
 
     return {
       isValid: true,
@@ -178,88 +163,9 @@ ipcMain.handle('license:verify', (_event, formattedKey) => {
 });
 
 // ===============================
-// Create Main Window - CRITICAL SETTINGS
-// ===============================
-function createWindow() {
-  mainWindow = new BrowserWindow({
-    width: 1200,
-    height: 800,
-    fullscreen: false, // Set true for kiosk mode
-    kiosk: false, // Set true for locked kiosk
-    // autoHideMenuBar: true, // Hide menu bar
-    webPreferences: {
-      preload: path.join(__dirname, 'preload.js'),
-      nodeIntegration: false,
-      contextIsolation: true,
-      webviewTag: false,
-      enableRemoteModule: false,
-      sandbox: false,
-      backgroundThrottling: false,
-      enableBlinkFeatures: 'PointerEvent',
-    },
-  });
-
-  const isDev = process.env.NODE_ENV === 'development' || !app.isPackaged;
-
-  if (isDev) {
-    mainWindow.loadURL('http://localhost:5173');
-    mainWindow.webContents.openDevTools();
-  } else {
-    mainWindow.loadFile(path.join(__dirname, '../app/dist/index.html'));
-  }
-
-  // ✅ FIX: Add barcode scanner support AFTER mainWindow is created
-  mainWindow.webContents.on('before-input-event', (event, input) => {
-    // Barcode scanners typically send rapid keystrokes ending with Enter
-    // Don't prevent default - let it reach your React app naturally
-    // Most scanners work as keyboard input, so they'll work automatically
-  });
-
-  // Prevent ANY focus stealing
-  mainWindow.on('blur', () => {
-    // Don't do anything that might steal focus
-  });
-
-  mainWindow.on('closed', () => {
-    mainWindow = null;
-  });
-}
-
-// ===============================
-// App Lifecycle
-// ===============================
-app.whenReady().then(() => {
-  createWindow();
-
-  app.on('activate', () => {
-    if (BrowserWindow.getAllWindows().length === 0) createWindow();
-  });
-});
-
-app.on('window-all-closed', () => {
-  if (process.platform !== 'darwin') app.quit();
-});
-
-// Save store on quit
-app.on('before-quit', () => {
-  console.log('Saving store before quit...');
-  store.save();
-});
-
-// Disable hardware acceleration if causing issues
-// app.disableHardwareAcceleration();
-
-ipcMain.handle('show-keyboard', async () => {
-  // Windows on-screen keyboard
-  if (process.platform === 'win32') {
-    require('child_process').exec('osk.exe');
-  }
-  return { success: true };
-});
-
-// ===============================
 // Store Handlers
 // ===============================
+
 ipcMain.handle('store:get', async (_event, key) => {
   try {
     return store.get(key);
@@ -290,16 +196,20 @@ ipcMain.handle('store:delete', async (_event, key) => {
 });
 
 // ===============================
-// Print Handlers - NO FOCUS STEALING
+// Print Handlers
 // ===============================
 
 ipcMain.handle('print-pdf', async (_event, pdfData) => {
   return new Promise((resolve) => {
     try {
-      // Create completely isolated print window
+      if (!pdfData || typeof pdfData !== 'string') {
+        resolve({ success: false, error: 'Invalid PDF data' });
+        return;
+      }
+
       const printWindow = new BrowserWindow({
         show: false,
-        parent: null,
+        parent: mainWindow,
         modal: false,
         webPreferences: {
           nodeIntegration: false,
@@ -308,18 +218,41 @@ ipcMain.handle('print-pdf', async (_event, pdfData) => {
         },
       });
 
+      const html = `<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <style>
+    @page { margin: 0; }
+    body { margin: 0; }
+  </style>
+</head>
+<body>
+  <embed 
+    src="data:application/pdf;base64,${pdfData}" 
+    type="application/pdf" 
+    width="100%" 
+    height="100%" 
+  />
+</body>
+</html>`;
+
       printWindow
-        .loadURL(`data:application/pdf;base64,${pdfData}`)
+        .loadURL(`data:text/html;charset=utf-8,${encodeURIComponent(html)}`)
         .then(() => {
           setTimeout(() => {
             printWindow.webContents.print(
-              { silent: false, printBackground: true },
+              {
+                silent: false,
+                printBackground: true,
+                deviceName: '',
+              },
               (success, errorType) => {
                 printWindow.close();
                 resolve({ success, error: errorType });
               },
             );
-          }, 500);
+          }, 1000);
         })
         .catch((error) => {
           printWindow.close();
@@ -332,7 +265,7 @@ ipcMain.handle('print-pdf', async (_event, pdfData) => {
 });
 
 // ===============================
-// Thermal Printer Handler - IMPROVED
+// Thermal Printer Handler
 // ===============================
 
 ipcMain.handle('print-thermal', async (_event, receiptText) => {
@@ -409,7 +342,6 @@ ipcMain.handle('print-thermal', async (_event, receiptText) => {
                 printWindow.close();
 
                 if (success) {
-                  console.log('✅ Receipt printed successfully');
                   resolve({ success: true });
                 } else {
                   console.error('❌ Print failed:', errorType);
@@ -442,7 +374,7 @@ ipcMain.handle('get-printers', async () => {
 });
 
 // ===============================
-// Cash Drawer Handler - PROPER IMPLEMENTATION
+// Cash Drawer Handler
 // ===============================
 
 ipcMain.handle('open-cash-drawer', async () => {
@@ -450,7 +382,6 @@ ipcMain.handle('open-cash-drawer', async () => {
     const result = await openCashDrawerViaPrinter();
 
     if (result.success) {
-      console.log('✅ Cash drawer opened successfully');
     } else {
       console.error('❌ Cash drawer failed:', result.error);
     }

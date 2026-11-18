@@ -1,6 +1,6 @@
 // app/src/App.tsx (Simplified version)
 import React, { useEffect } from 'react';
-import { BrowserRouter } from 'react-router-dom';
+import { HashRouter } from 'react-router-dom';
 import { AuthProvider } from './contexts/AuthContext';
 import { AppRoutes } from './routes/AppRoutes';
 import { ToastContainer } from 'react-toastify';
@@ -13,7 +13,7 @@ const App: React.FC = () => {
         <LicenseProvider>
           <LicenseGuard>
 
-            <BrowserRouter>
+            <HashRouter>
               {/* Toast Container with proper configuration */}
               <ToastContainer
                 position="top-right"
@@ -31,7 +31,7 @@ const App: React.FC = () => {
               />
 
               <AppRoutes />
-            </BrowserRouter>
+            </HashRouter>
           </LicenseGuard>
         </LicenseProvider>
       </AuthProvider>

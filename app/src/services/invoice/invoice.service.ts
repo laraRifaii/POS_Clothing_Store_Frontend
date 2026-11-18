@@ -1,7 +1,7 @@
 // src/renderer/services/invoice/invoice.service.ts
 import { Sale } from '../api/sale.api';
 import { StoreInfo } from '../api/store-info.api';
-import { jsPDF } from 'jspdf';
+import  jsPDF  from 'jspdf';
 import autoTable from 'jspdf-autotable';
 
 class InvoiceService {
