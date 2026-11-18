@@ -2,7 +2,7 @@
 
 A desktop point-of-sale application for a clothing store, built with **Electron** and a **React + TypeScript (Vite)** renderer. It talks to a separate NestJS backend over REST.
 
-> Backend repository: https://github.com/laraRifaii/POS_Clothing_Store_Backend
+> Backend repository: [POS_Clothing_Store_Backend](https://github.com/laraRifaii/POS_Clothing_Store_Backend) (NestJS + Prisma + SQLite)
 
 ## Features
 
@@ -70,14 +70,38 @@ The renderer runs with `contextIsolation: true` and `nodeIntegration: false`. It
 ### Prerequisites
 
 - Node.js 20.19+ (22 LTS recommended) and npm
-- The backend running locally or reachable over the network
+- The [backend](https://github.com/laraRifaii/POS_Clothing_Store_Backend) running locally or reachable over the network. In a separate terminal:
+  ```bash
+  git clone https://github.com/laraRifaii/POS_Clothing_Store_Backend.git
+  cd POS_Clothing_Store_Backend
+  npm install
+  npx prisma generate
+  npm run start:dev
+  ```
+  Start the backend first, then start this app.
 
 ### Install
 
+This project has **two `package.json` files**, so dependencies must be installed in **both** places before the app will start:
+
+1. **Root folder** (Electron, electron-builder and dev tooling):
+   ```bash
+   npm install
+   ```
+2. **`app/` folder** (the React renderer):
+   ```bash
+   cd app
+   npm install
+   cd ..
+   ```
+
+Or run both from the root in one go:
+
 ```bash
-npm install
-npm install --prefix app
+npm install && npm install --prefix app
 ```
+
+If you skip either one, `npm run dev` will fail (a missing `electron` or `concurrently` command points to the root install, a missing `vite` command points to the `app/` install).
 
 ### Environment
 
